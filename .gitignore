@@ -3,3 +3,6 @@ data/*.parquet
 data/pit.pkl
 __pycache__/
 .venv/
+data/*.pkl
+data/membership/cik-lookup-data.txt
+data/membership/sp500_hist.csv
