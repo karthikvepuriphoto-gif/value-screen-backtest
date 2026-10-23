@@ -1,97 +1,50 @@
-# value-screen-backtest
+# Phase 3 summary: survivorship fix and hypothesis tests
 
-A rules-based, point-in-time backtest of a value checklist taken from the *Investing Club* YouTube channel (2019–2022): Buffett, Phil Town (Rule #1), Peter Lynch's PEG and Greenblatt-style metrics.
+**Bottom line:**
+- With survivorship bias removed (point-in-time S&P 500), the screen returns **13.2% CAGR** with Sharpe 0.68. SPY returned **14.8%** with Sharpe 0.92 over 2012–2026.
+- The biased universe had shown 16.0%.
+- **None** of the 147 hypotheses survives Benjamini-Hochberg (min q_BH = 0.69) or Bonferroni correction, and none is both in-sample and out-of-sample significant.
+- 7 effects were significant in-sample only.
+- No variant from the 42 parameter, filter, and regime-gate runs beats SPY significantly.
+- **Paper-trading candidates: none.**
 
-**Research only, not investment advice.**
+Branches: [survivorship-fix](https://github.com/karthikvepuriphoto-gif/value-screen-backtest/tree/survivorship-fix) · [hyp-segments](https://github.com/karthikvepuriphoto-gif/value-screen-backtest/tree/hyp-segments) · [hyp-election](https://github.com/karthikvepuriphoto-gif/value-screen-backtest/tree/hyp-election) · [hyp-seasonality](https://github.com/karthikvepuriphoto-gif/value-screen-backtest/tree/hyp-seasonality) · [hyp-weather](https://github.com/karthikvepuriphoto-gif/value-screen-backtest/tree/hyp-weather) · [hyp-macro](https://github.com/karthikvepuriphoto-gif/value-screen-backtest/tree/hyp-macro) · [hyp-combos-regime-switch](https://github.com/karthikvepuriphoto-gif/value-screen-backtest/tree/hyp-combos-regime-switch) · [hyp-robustness](https://github.com/karthikvepuriphoto-gif/value-screen-backtest/tree/hyp-robustness). Details are in [SURVIVORSHIP.md](SURVIVORSHIP.md).
 
-## Strategy (parameters fixed in advance from the creator's stated rules; nothing was tuned)
-- **Rebalance:** quarterly, on the first trading day of Jan, Apr, Jul and Oct (2012-01 to 2026-10).
-- **Must pass (all companies):** market cap > $500M, net income > 0 and above the prior year (rising earnings).
-- **Must pass (non-financials only):** FCF (CFO − capex) > 0, long-term debt / equity < 1, and current ratio > 1 when it is reported.
-- **Score:**
-  - P/FCF < 10 (2 points) or < 15 (1 point)
-  - P/E ≤ 15
-  - PEG < 1, using 3-year net income CAGR
-  - P/B < 1.5
-  - ROE > 15%
-  - revenue growth > 5%
-  - net income growth > 15%
-- **Ranking:** by score, with ties broken by earnings yield. Buy the top N at equal weight, capped at 5% (Top 10 is uncapped at 10% each, because a 5% cap would leave it half in cash).
-- **Optional stop:** sell a position if it falls 40% from its peak since entry. The cash is held until the next rebalance.
-- **Costs:** 10 bps on traded notional.
+## Lowest-p hypotheses (global pool of 147 tests)
+| family      | hypothesis                                                             |   full_mean |     p |   p_bonf |   q_BH |   IS_mean |   p_IS |   OOS_mean |   p_OOS | verdict         |
+|:------------|:-----------------------------------------------------------------------|------------:|------:|---------:|-------:|----------:|-------:|-----------:|--------:|:----------------|
+| weather     | Energy sector (EW S&P500 PIT) excess | enso_la_nina vs not             |       0.045 | 0.011 |        1 |  0.685 |     0.008 |  0.669 |      0.058 |   0.011 | not significant |
+| election    | strategy excess | pres_election_pm3m vs not                            |       0.018 | 0.023 |        1 |  0.685 |     0.024 |  0.024 |      0.012 |   0.33  | IN-SAMPLE ONLY  |
+| weather     | Agriculture sector (EW S&P500 PIT) excess | enso_la_nina vs not        |       0.03  | 0.034 |        1 |  0.685 |     0.004 |  0.819 |      0.042 |   0.053 | not significant |
+| election    | strategy excess | post_pres_election_6m vs not                         |       0.017 | 0.04  |        1 |  0.685 |     0.016 |  0.145 |      0.018 |   0.149 | not significant |
+| seasonality | strategy excess | month_05 vs not                                      |      -0.021 | 0.041 |        1 |  0.685 |    -0.01  |  0.357 |     -0.031 |   0.08  | not significant |
+| weather     | Agriculture sector (EW S&P500 PIT) excess | temp_anom_prev_cold vs not |       0.019 | 0.045 |        1 |  0.685 |     0.02  |  0.024 |      0.019 |   0.309 | IN-SAMPLE ONLY  |
+| seasonality | strategy excess | quarter_Q4 vs not                                    |       0.013 | 0.045 |        1 |  0.685 |     0.006 |  0.427 |      0.02  |   0.044 | not significant |
+| segment     | sector=Tech: minus other passers (quarterly)                           |       0.017 | 0.045 |        1 |  0.685 |     0.009 |  0.421 |      0.025 |   0.061 | not significant |
+| seasonality | strategy excess | month_11 vs not                                      |       0.022 | 0.047 |        1 |  0.685 |     0.017 |  0.329 |      0.026 |   0.096 | not significant |
+| segment     | sector=Materials: sleeve EW excess vs SPY (quarterly)                  |      -0.02  | 0.048 |        1 |  0.685 |    -0.036 |  0.048 |     -0.006 |   0.561 | IN-SAMPLE ONLY  |
+| segment     | sector=RealEstate: sleeve EW excess vs SPY (quarterly)                 |      -0.017 | 0.059 |        1 |  0.685 |    -0.007 |  0.535 |     -0.025 |   0.058 | not significant |
+| segment     | sector=Materials: minus other passers (quarterly)                      |      -0.019 | 0.061 |        1 |  0.685 |    -0.037 |  0.041 |     -0.003 |   0.799 | IN-SAMPLE ONLY  |
+| segment     | sector=Staples: sleeve EW excess vs SPY (quarterly)                    |      -0.022 | 0.063 |        1 |  0.685 |    -0.041 |  0.003 |     -0.012 |   0.49  | IN-SAMPLE ONLY  |
+| segment     | sector=Tech: sleeve EW excess vs SPY (quarterly)                       |       0.013 | 0.066 |        1 |  0.685 |     0.009 |  0.43  |      0.017 |   0.068 | not significant |
+| segment     | sector=RealEstate: minus other passers (quarterly)                     |      -0.016 | 0.082 |        1 |  0.776 |    -0.008 |  0.551 |     -0.023 |   0.069 | not significant |
 
-## Data, point in time
-- **Fundamentals:** SEC EDGAR XBRL `companyfacts`. Each value is used only after its **first filing date**, so restatements cause no lookahead. Flow items (net income, revenue, CFO, capex) are annual 10-K figures. Balance-sheet items and shares are the latest 10-K or 10-Q values.
-- **Market cap:** yfinance close with splits backed out, multiplied by the shares outstanding reported on the cover page.
-- **Prices:** yfinance adjusted close. Benchmarks are SPY (cap-weighted) and RSP (equal-weight S&P 500).
-
-## Results (2012-01-03 to 2026-10-22)
-The 2019–2026 period is effectively out of sample, since the rules came from videos made in 2019–2022 and were not fitted to data. Turnover is one-way per year over the full period.
-
-| strategy     | period         | CAGR   | Vol   |   Sharpe | MaxDD   | turnover   |
-|:-------------|:---------------|:-------|:------|---------:|:--------|:-----------|
-| Top20        | Full 2012-2026 | 16.0%  | 22.7% |     0.77 | -51.8%  | 170%       |
-| Top20        | 2012-2018      | 12.6%  | 16.0% |     0.82 | -27.9%  | 170%       |
-| Top20        | 2019-2026      | 19.1%  | 27.4% |     0.78 | -51.8%  | 170%       |
-| Top20+stop40 | Full 2012-2026 | 16.3%  | 21.1% |     0.82 | -43.0%  | 175%       |
-| Top20+stop40 | 2012-2018      | 12.5%  | 16.0% |     0.82 | -27.9%  | 175%       |
-| Top20+stop40 | 2019-2026      | 19.7%  | 24.9% |     0.85 | -43.0%  | 175%       |
-| Top10        | Full 2012-2026 | 17.5%  | 24.6% |     0.78 | -52.9%  | 186%       |
-| Top10        | 2012-2018      | 14.6%  | 17.3% |     0.88 | -24.7%  | 186%       |
-| Top10        | 2019-2026      | 20.1%  | 29.6% |     0.77 | -52.9%  | 186%       |
-| Top10+stop40 | Full 2012-2026 | 17.5%  | 22.8% |     0.82 | -46.4%  | 191%       |
-| Top10+stop40 | 2012-2018      | 14.6%  | 17.3% |     0.88 | -24.7%  | 191%       |
-| Top10+stop40 | 2019-2026      | 20.0%  | 26.8% |     0.82 | -46.4%  | 191%       |
-| Top30        | Full 2012-2026 | 16.4%  | 22.3% |     0.8  | -49.8%  | 157%       |
-| Top30        | 2012-2018      | 13.3%  | 15.7% |     0.87 | -26.5%  | 157%       |
-| Top30        | 2019-2026      | 19.2%  | 26.8% |     0.79 | -49.8%  | 157%       |
-| Top30+stop40 | Full 2012-2026 | 16.7%  | 20.8% |     0.85 | -40.4%  | 161%       |
-| Top30+stop40 | 2012-2018      | 13.2%  | 15.7% |     0.87 | -26.5%  | 161%       |
-| Top30+stop40 | 2019-2026      | 19.8%  | 24.4% |     0.86 | -40.4%  | 161%       |
-| SPY          | Full 2012-2026 | 14.8%  | 16.5% |     0.92 | -33.7%  |            |
-| SPY          | 2012-2018      | 12.3%  | 12.8% |     0.97 | -19.3%  |            |
-| SPY          | 2019-2026      | 17.1%  | 19.2% |     0.92 | -33.7%  |            |
-| RSP          | Full 2012-2026 | 12.8%  | 16.9% |     0.8  | -39.0%  |            |
-| RSP          | 2012-2018      | 11.7%  | 13.2% |     0.91 | -19.8%  |            |
-| RSP          | 2019-2026      | 13.7%  | 19.7% |     0.75 | -39.0%  |            |
-
-![equity](results/equity_curve.png)
-
-### Calendar-year returns (2026 is year to date)
-|   Date | Top20   | Top20+stop40   | Top10   | Top10+stop40   | Top30   | Top30+stop40   | SPY    | RSP    |
-|-------:|:--------|:---------------|:--------|:---------------|:--------|:---------------|:-------|:-------|
-|   2012 | 21.2%   | 21.2%          | 14.3%   | 14.3%          | 20.7%   | 20.7%          | 14.2%  | 15.4%  |
-|   2013 | 37.5%   | 37.5%          | 46.3%   | 46.3%          | 37.9%   | 37.9%          | 32.3%  | 35.5%  |
-|   2014 | 14.7%   | 14.7%          | 14.1%   | 14.1%          | 13.4%   | 13.4%          | 13.5%  | 14.1%  |
-|   2015 | -3.4%   | -3.4%          | -2.4%   | -2.4%          | -1.5%   | -1.5%          | 1.2%   | -2.7%  |
-|   2016 | 21.6%   | 20.7%          | 37.1%   | 37.1%          | 24.3%   | 23.8%          | 12.0%  | 14.5%  |
-|   2017 | 23.9%   | 23.9%          | 17.9%   | 17.9%          | 23.4%   | 23.4%          | 21.7%  | 18.5%  |
-|   2018 | -17.7%  | -17.7%         | -13.8%  | -13.8%         | -16.2%  | -16.3%         | -4.6%  | -7.8%  |
-|   2019 | 35.3%   | 35.3%          | 39.2%   | 39.2%          | 34.6%   | 34.6%          | 31.2%  | 28.9%  |
-|   2020 | -6.1%   | 1.1%           | 4.5%    | 9.9%           | 0.6%    | 8.0%           | 18.3%  | 12.7%  |
-|   2021 | 38.6%   | 38.6%          | 39.3%   | 39.3%          | 42.7%   | 42.7%          | 28.7%  | 29.4%  |
-|   2022 | -12.7%  | -12.8%         | -15.9%  | -15.9%         | -8.6%   | -8.6%          | -18.2% | -11.6% |
-|   2023 | 45.5%   | 41.7%          | 36.6%   | 29.2%          | 34.4%   | 32.0%          | 26.2%  | 13.7%  |
-|   2024 | 20.7%   | 20.4%          | 13.8%   | 13.4%          | 20.4%   | 19.1%          | 24.9%  | 12.8%  |
-|   2025 | 25.0%   | 24.3%          | 29.3%   | 29.5%          | 23.5%   | 23.1%          | 17.7%  | 11.2%  |
-|   2026 | 17.1%   | 17.1%          | 23.3%   | 23.3%          | 12.3%   | 12.3%          | 12.9%  | 15.3%  |
-
-## Current portfolio (Top 20 as of 2026-10-22)
-See [`current_portfolio.csv`](current_portfolio.csv): RNR, ALL, VNO, ACGL, HIG, FAF, SIGI, PGR, THG, TRV, CRUS, L, PYPL, EG, ORI, PRU, LDOS, WTFC, G, RGA.
+## Best variants by CAGR (SPY 14.8%)
+| variant                           |   full_CAGR |   full_Sharpe |   IS_CAGR |   OOS_CAGR |   full_vsSPY_t |   q_BH_vsBase |
+|:----------------------------------|------------:|--------------:|----------:|-----------:|---------------:|--------------:|
+| D/E<0.5                           |       0.146 |         0.736 |     0.121 |      0.168 |          0.17  |         0.878 |
+| gate: curve not inverted else SPY |       0.146 |         0.755 |     0.113 |      0.176 |          0.13  |         0.878 |
+| gate: S&P>200d else SPY           |       0.14  |         0.754 |     0.121 |      0.157 |          0.022 |         0.88  |
+| semiannual rebal                  |       0.14  |         0.725 |     0.115 |      0.162 |         -0.006 |         0.878 |
+| ex Materials+Staples              |       0.14  |         0.715 |     0.119 |      0.158 |          0.005 |         0.878 |
+| gate: oil uptrend else SPY        |       0.14  |         0.78  |     0.113 |      0.163 |         -0.253 |         0.959 |
+| financials only (N10)             |       0.139 |         0.669 |     0.114 |      0.161 |          0.111 |         0.878 |
+| no rising-NI rule                 |       0.139 |         0.696 |     0.111 |      0.164 |          0.02  |         0.878 |
 
 ## Caveats
-- **Survivorship bias:** the universe is *today's* S&P 500 + S&P 400, so companies that went bankrupt or were acquired between 2012 and 2026 are missing. This almost certainly inflates returns. A survivorship-free version needs historical index membership plus prices for delisted names.
-- **Missing data:** about 100–270 names per date lack usable XBRL data or price history (early years especially), and OZK has no SEC XBRL data at all (it files with the FDIC).
-- **Sector labels:** financials are identified with *current* yfinance sectors, and a few names have no label.
-- **Stale and coarse fundamentals:** annual flow data can be up to about 15 months old. The XBRL tag choice is simple (LongTermDebt only, so leases and short-term debt are ignored).
-- **Concentration:** the screen heavily favors insurers, banks and other financials, so results are a concentrated factor bet (value plus financials) with higher volatility and drawdown than SPY.
-- **Cost model:** no taxes, no slippage beyond 10 bps, and the risk-free rate is 0 in the Sharpe ratio.
+- Only 24% of delisted names have prices (4% of acquisitions), and usable member coverage is 72% in 2012 rising to 98% in 2026.
+- There is no point-in-time S&P 400 data.
+- Macro data uses yfinance and BLS proxies because FRED was unreachable from the box.
+- The election tests cover only about 3.5 cycles.
 
-## Run
-```
-pip install -r requirements.txt
-python fetch_sec.py      # SEC companyfacts (sets a User-Agent)
-python fetch_prices.py   # yfinance prices (re-run for tickers Yahoo rate-limits)
-python backtest.py
-python make_readme.py
-```
+---
