@@ -1,97 +1,38 @@
-# value-screen-backtest
+# hyp-combos-regime-switch
 
-A rules-based, point-in-time backtest of a value checklist taken from the *Investing Club* YouTube channel (2019–2022): Buffett, Phil Town (Rule #1), Peter Lynch's PEG and Greenblatt-style metrics.
+## Filters, combinations, and quarterly regime gates (screen when the regime is favourable, otherwise SPY), run through the full engine
+SPY CAGR: full period 14.8%, IS 12.3%, OOS 17.1%. By subperiod: 2012–15 14.8%, 2016–19 14.7%, 2020–22 7.3%, 2023–26 21.6%.
 
-**Research only, not investment advice.**
+| variant                           |   full_CAGR |   full_Sharpe |   full_MaxDD |   IS_CAGR |   OOS_CAGR |   full_vsSPY_t |   full_vsBase_t |   full_vsBase_p |   q_BH_vsBase |   OOS_vsBase_t |   CAGR_2012-15 |   CAGR_2016-19 |   CAGR_2020-22 |   CAGR_2023-26 |   turnover |
+|:----------------------------------|------------:|--------------:|-------------:|----------:|-----------:|---------------:|----------------:|----------------:|--------------:|---------------:|---------------:|---------------:|---------------:|---------------:|-----------:|
+| base Top20                        |       0.132 |         0.683 |       -0.463 |     0.113 |      0.148 |         -0.233 |         nan     |         nan     |       nan     |        nan     |          0.146 |          0.137 |          0.062 |          0.171 |      1.52  |
+| ex-financials                     |       0.109 |         0.611 |       -0.474 |     0.118 |      0.1   |         -1.223 |          -1.06  |           0.291 |         0.878 |         -1.296 |          0.17  |          0.101 |          0.054 |          0.1   |      1.593 |
+| financials only (N10)             |       0.139 |         0.669 |       -0.515 |     0.114 |      0.161 |          0.111 |           0.633 |           0.528 |         0.878 |          0.622 |          0.133 |          0.172 |          0.073 |          0.169 |      1.322 |
+| momentum12>0 filter               |       0.107 |         0.633 |       -0.501 |     0.1   |      0.113 |         -1.133 |          -1.171 |           0.243 |         0.878 |         -1.251 |          0.116 |          0.127 |          0.032 |          0.147 |      1.843 |
+| ex-fin + mom>0                    |       0.112 |         0.675 |       -0.444 |     0.099 |      0.124 |         -1.248 |          -0.638 |           0.524 |         0.878 |         -0.622 |          0.153 |          0.106 |          0.034 |          0.147 |      1.991 |
+| quality ROE>15% & D/E<0.5         |       0.128 |         0.71  |       -0.433 |     0.121 |      0.134 |         -0.55  |          -0.375 |           0.708 |         0.88  |         -0.675 |          0.182 |          0.116 |          0.074 |          0.132 |      1.417 |
+| max 4 per sector                  |       0.12  |         0.644 |       -0.491 |     0.108 |      0.129 |         -0.687 |          -1.095 |           0.275 |         0.878 |         -1.028 |          0.156 |          0.105 |          0.079 |          0.133 |      1.582 |
+| gate: S&P>200d else SPY           |       0.14  |         0.754 |       -0.463 |     0.121 |      0.157 |          0.022 |           0.394 |           0.694 |         0.88  |          0.091 |          0.144 |          0.15  |          0.059 |          0.198 |      1.628 |
+| gate: VIX<=20 else SPY            |       0.121 |         0.678 |       -0.463 |     0.111 |      0.129 |         -0.648 |          -0.554 |           0.585 |         0.878 |         -0.694 |          0.144 |          0.133 |         -0.028 |          0.218 |      1.885 |
+| gate: curve not inverted else SPY |       0.146 |         0.755 |       -0.469 |     0.113 |      0.176 |          0.13  |           0.738 |           0.462 |         0.878 |          0.737 |          0.146 |          0.13  |          0.062 |          0.238 |      1.511 |
+| gate: Fed not hiking else SPY     |       0.132 |         0.698 |       -0.463 |     0.135 |      0.128 |         -0.415 |          -0.202 |           0.84  |         0.931 |         -0.807 |          0.146 |          0.171 |          0.028 |          0.165 |      1.383 |
+| gate: inflation<=3% else SPY      |       0.129 |         0.686 |       -0.463 |     0.105 |      0.15  |         -0.381 |          -0.13  |           0.897 |         0.943 |         -0.099 |          0.131 |          0.137 |          0.037 |          0.199 |      1.361 |
+| gate: oil uptrend else SPY        |       0.14  |         0.78  |       -0.464 |     0.113 |      0.163 |         -0.253 |           0.081 |           0.936 |         0.959 |          0.157 |          0.137 |          0.142 |          0.058 |          0.213 |      1.867 |
 
-## Strategy (parameters fixed in advance from the creator's stated rules; nothing was tuned)
-- **Rebalance:** quarterly, on the first trading day of Jan, Apr, Jul and Oct (2012-01 to 2026-10).
-- **Must pass (all companies):** market cap > $500M, net income > 0 and above the prior year (rising earnings).
-- **Must pass (non-financials only):** FCF (CFO − capex) > 0, long-term debt / equity < 1, and current ratio > 1 when it is reported.
-- **Score:**
-  - P/FCF < 10 (2 points) or < 15 (1 point)
-  - P/E ≤ 15
-  - PEG < 1, using 3-year net income CAGR
-  - P/B < 1.5
-  - ROE > 15%
-  - revenue growth > 5%
-  - net income growth > 15%
-- **Ranking:** by score, with ties broken by earnings yield. Buy the top N at equal weight, capped at 5% (Top 10 is uncapped at 10% each, because a 5% cap would leave it half in cash).
-- **Optional stop:** sell a position if it falls 40% from its peak since entry. The cash is held until the next rebalance.
-- **Costs:** 10 bps on traded notional.
+## Monthly regime switch (synthetic, 20 bps per round trip). Rules were *selected on 2012–2018 only*
+| rule                                        |   full_CAGR |   full_Sharpe |   full_MaxDD |   full_excess_t |   full_excess_p |   IS_CAGR |   IS_Sharpe |   IS_MaxDD |   IS_excess_t |   IS_excess_p |   OOS_CAGR |   OOS_Sharpe |   OOS_MaxDD |   OOS_excess_t |   OOS_excess_p |
+|:--------------------------------------------|------------:|--------------:|-------------:|----------------:|----------------:|----------:|------------:|-----------:|--------------:|--------------:|-----------:|-------------:|------------:|---------------:|---------------:|
+| SPY                                         |       0.146 |         1.058 |       -0.239 |         nan     |         nan     |     0.12  |       1.126 |     -0.135 |       nan     |       nan     |      0.17  |        1.052 |      -0.239 |        nan     |        nan     |
+| screen always                               |       0.127 |         0.706 |       -0.348 |          -0.233 |           0.816 |     0.102 |       0.695 |     -0.233 |        -0.275 |         0.784 |      0.149 |        0.728 |      -0.348 |         -0.107 |          0.917 |
+| monthly gate: spx_above_200d                |       0.127 |         0.77  |       -0.258 |          -0.49  |           0.643 |     0.119 |       0.826 |     -0.207 |         0.125 |         0.901 |      0.134 |        0.74  |      -0.255 |         -0.726 |          0.488 |
+| monthly gate: halloween_NovApr              |       0.148 |         0.879 |       -0.348 |           0.343 |           0.734 |     0.121 |       0.873 |     -0.166 |         0.212 |         0.833 |      0.172 |        0.899 |      -0.348 |          0.269 |          0.798 |
+| monthly gate: NOT vix_gt20                  |       0.12  |         0.726 |       -0.272 |          -0.664 |           0.508 |     0.094 |       0.652 |     -0.247 |        -0.524 |         0.632 |      0.144 |        0.783 |      -0.255 |         -0.435 |          0.665 |
+| monthly gate: NOT curve_inverted            |       0.151 |         0.875 |       -0.255 |           0.404 |           0.687 |     0.102 |       0.695 |     -0.233 |        -0.275 |         0.784 |      0.196 |        1.012 |      -0.255 |          0.717 |          0.475 |
+| monthly gate: NOT fed_hiking                |       0.129 |         0.758 |       -0.348 |          -0.324 |           0.747 |     0.123 |       0.863 |     -0.183 |         0.268 |         0.808 |      0.134 |        0.708 |      -0.348 |         -0.546 |          0.586 |
+| monthly gate: NOT infl_gt3                  |       0.119 |         0.71  |       -0.348 |          -0.727 |           0.489 |     0.102 |       0.695 |     -0.233 |        -0.275 |         0.784 |      0.135 |        0.727 |      -0.348 |         -0.738 |          0.5   |
+| IS-selected gate: NOT cycle_yr2_midterm     |       0.137 |         0.785 |       -0.348 |          -0.012 |           0.991 |     0.145 |       0.999 |     -0.183 |         0.98  |         0.345 |      0.13  |        0.676 |      -0.348 |         -0.619 |          0.547 |
+| IS-selected gate: pres_election_pm3m        |       0.175 |         1.142 |       -0.239 |           2.092 |           0.053 |     0.161 |       1.279 |     -0.135 |         1.923 |         0.074 |      0.188 |        1.078 |      -0.239 |          1.006 |          0.379 |
+| IS-selected gate: NOT midterm_election_pm3m |       0.128 |         0.746 |       -0.348 |          -0.304 |           0.761 |     0.13  |       0.911 |     -0.183 |         0.468 |         0.641 |      0.126 |        0.665 |      -0.348 |         -0.624 |          0.534 |
+| IS-selected OR-combination                  |       0.132 |         0.755 |       -0.348 |          -0.156 |           0.876 |     0.127 |       0.869 |     -0.183 |         0.383 |         0.719 |      0.136 |        0.7   |      -0.348 |         -0.411 |          0.682 |
 
-## Data, point in time
-- **Fundamentals:** SEC EDGAR XBRL `companyfacts`. Each value is used only after its **first filing date**, so restatements cause no lookahead. Flow items (net income, revenue, CFO, capex) are annual 10-K figures. Balance-sheet items and shares are the latest 10-K or 10-Q values.
-- **Market cap:** yfinance close with splits backed out, multiplied by the shares outstanding reported on the cover page.
-- **Prices:** yfinance adjusted close. Benchmarks are SPY (cap-weighted) and RSP (equal-weight S&P 500).
-
-## Results (2012-01-03 to 2026-10-22)
-The 2019–2026 period is effectively out of sample, since the rules came from videos made in 2019–2022 and were not fitted to data. Turnover is one-way per year over the full period.
-
-| strategy     | period         | CAGR   | Vol   |   Sharpe | MaxDD   | turnover   |
-|:-------------|:---------------|:-------|:------|---------:|:--------|:-----------|
-| Top20        | Full 2012-2026 | 16.0%  | 22.7% |     0.77 | -51.8%  | 170%       |
-| Top20        | 2012-2018      | 12.6%  | 16.0% |     0.82 | -27.9%  | 170%       |
-| Top20        | 2019-2026      | 19.1%  | 27.4% |     0.78 | -51.8%  | 170%       |
-| Top20+stop40 | Full 2012-2026 | 16.3%  | 21.1% |     0.82 | -43.0%  | 175%       |
-| Top20+stop40 | 2012-2018      | 12.5%  | 16.0% |     0.82 | -27.9%  | 175%       |
-| Top20+stop40 | 2019-2026      | 19.7%  | 24.9% |     0.85 | -43.0%  | 175%       |
-| Top10        | Full 2012-2026 | 17.5%  | 24.6% |     0.78 | -52.9%  | 186%       |
-| Top10        | 2012-2018      | 14.6%  | 17.3% |     0.88 | -24.7%  | 186%       |
-| Top10        | 2019-2026      | 20.1%  | 29.6% |     0.77 | -52.9%  | 186%       |
-| Top10+stop40 | Full 2012-2026 | 17.5%  | 22.8% |     0.82 | -46.4%  | 191%       |
-| Top10+stop40 | 2012-2018      | 14.6%  | 17.3% |     0.88 | -24.7%  | 191%       |
-| Top10+stop40 | 2019-2026      | 20.0%  | 26.8% |     0.82 | -46.4%  | 191%       |
-| Top30        | Full 2012-2026 | 16.4%  | 22.3% |     0.8  | -49.8%  | 157%       |
-| Top30        | 2012-2018      | 13.3%  | 15.7% |     0.87 | -26.5%  | 157%       |
-| Top30        | 2019-2026      | 19.2%  | 26.8% |     0.79 | -49.8%  | 157%       |
-| Top30+stop40 | Full 2012-2026 | 16.7%  | 20.8% |     0.85 | -40.4%  | 161%       |
-| Top30+stop40 | 2012-2018      | 13.2%  | 15.7% |     0.87 | -26.5%  | 161%       |
-| Top30+stop40 | 2019-2026      | 19.8%  | 24.4% |     0.86 | -40.4%  | 161%       |
-| SPY          | Full 2012-2026 | 14.8%  | 16.5% |     0.92 | -33.7%  |            |
-| SPY          | 2012-2018      | 12.3%  | 12.8% |     0.97 | -19.3%  |            |
-| SPY          | 2019-2026      | 17.1%  | 19.2% |     0.92 | -33.7%  |            |
-| RSP          | Full 2012-2026 | 12.8%  | 16.9% |     0.8  | -39.0%  |            |
-| RSP          | 2012-2018      | 11.7%  | 13.2% |     0.91 | -19.8%  |            |
-| RSP          | 2019-2026      | 13.7%  | 19.7% |     0.75 | -39.0%  |            |
-
-![equity](results/equity_curve.png)
-
-### Calendar-year returns (2026 is year to date)
-|   Date | Top20   | Top20+stop40   | Top10   | Top10+stop40   | Top30   | Top30+stop40   | SPY    | RSP    |
-|-------:|:--------|:---------------|:--------|:---------------|:--------|:---------------|:-------|:-------|
-|   2012 | 21.2%   | 21.2%          | 14.3%   | 14.3%          | 20.7%   | 20.7%          | 14.2%  | 15.4%  |
-|   2013 | 37.5%   | 37.5%          | 46.3%   | 46.3%          | 37.9%   | 37.9%          | 32.3%  | 35.5%  |
-|   2014 | 14.7%   | 14.7%          | 14.1%   | 14.1%          | 13.4%   | 13.4%          | 13.5%  | 14.1%  |
-|   2015 | -3.4%   | -3.4%          | -2.4%   | -2.4%          | -1.5%   | -1.5%          | 1.2%   | -2.7%  |
-|   2016 | 21.6%   | 20.7%          | 37.1%   | 37.1%          | 24.3%   | 23.8%          | 12.0%  | 14.5%  |
-|   2017 | 23.9%   | 23.9%          | 17.9%   | 17.9%          | 23.4%   | 23.4%          | 21.7%  | 18.5%  |
-|   2018 | -17.7%  | -17.7%         | -13.8%  | -13.8%         | -16.2%  | -16.3%         | -4.6%  | -7.8%  |
-|   2019 | 35.3%   | 35.3%          | 39.2%   | 39.2%          | 34.6%   | 34.6%          | 31.2%  | 28.9%  |
-|   2020 | -6.1%   | 1.1%           | 4.5%    | 9.9%           | 0.6%    | 8.0%           | 18.3%  | 12.7%  |
-|   2021 | 38.6%   | 38.6%          | 39.3%   | 39.3%          | 42.7%   | 42.7%          | 28.7%  | 29.4%  |
-|   2022 | -12.7%  | -12.8%         | -15.9%  | -15.9%         | -8.6%   | -8.6%          | -18.2% | -11.6% |
-|   2023 | 45.5%   | 41.7%          | 36.6%   | 29.2%          | 34.4%   | 32.0%          | 26.2%  | 13.7%  |
-|   2024 | 20.7%   | 20.4%          | 13.8%   | 13.4%          | 20.4%   | 19.1%          | 24.9%  | 12.8%  |
-|   2025 | 25.0%   | 24.3%          | 29.3%   | 29.5%          | 23.5%   | 23.1%          | 17.7%  | 11.2%  |
-|   2026 | 17.1%   | 17.1%          | 23.3%   | 23.3%          | 12.3%   | 12.3%          | 12.9%  | 15.3%  |
-
-## Current portfolio (Top 20 as of 2026-10-22)
-See [`current_portfolio.csv`](current_portfolio.csv): RNR, ALL, VNO, ACGL, HIG, FAF, SIGI, PGR, THG, TRV, CRUS, L, PYPL, EG, ORI, PRU, LDOS, WTFC, G, RGA.
-
-## Caveats
-- **Survivorship bias:** the universe is *today's* S&P 500 + S&P 400, so companies that went bankrupt or were acquired between 2012 and 2026 are missing. This almost certainly inflates returns. A survivorship-free version needs historical index membership plus prices for delisted names.
-- **Missing data:** about 100–270 names per date lack usable XBRL data or price history (early years especially), and OZK has no SEC XBRL data at all (it files with the FDIC).
-- **Sector labels:** financials are identified with *current* yfinance sectors, and a few names have no label.
-- **Stale and coarse fundamentals:** annual flow data can be up to about 15 months old. The XBRL tag choice is simple (LongTermDebt only, so leases and short-term debt are ignored).
-- **Concentration:** the screen heavily favors insurers, banks and other financials, so results are a concentrated factor bet (value plus financials) with higher volatility and drawdown than SPY.
-- **Cost model:** no taxes, no slippage beyond 10 bps, and the risk-free rate is 0 in the Sharpe ratio.
-
-## Run
-```
-pip install -r requirements.txt
-python fetch_sec.py      # SEC companyfacts (sets a User-Agent)
-python fetch_prices.py   # yfinance prices (re-run for tickers Yahoo rate-limits)
-python backtest.py
-python make_readme.py
-```
+The best in-sample-selected rule, 'pres_election_pm3m' (hold the screen from August to February around presidential elections), covers only 4 elections. Its out-of-sample excess return is not significant (p=0.38), so it is not robust.
