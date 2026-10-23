@@ -11,6 +11,7 @@ def sic_sector(s):
     if 4900<=s<=4949 or 4950<=s<=4991: return 'Utilities' if s not in (4922,4923,4924,4925,4950,4953,4955,4959,4961) else ('Energy' if s<4950 else 'Industrials')
     if s in (1311,1381,1382,1389,2911,2990,5171,5172) or 1200<=s<=1241 or 4610<=s<=4619: return 'Energy'
     if 2830<=s<=2836 or 3840<=s<=3851 or 8000<=s<=8099 or s in (3826,5122,6324): return 'Health'
+    if 3630<=s<=3639: return 'ConsDisc'
     if 3570<=s<=3579 or 3600<=s<=3699 or 7370<=s<=7379 or 3820<=s<=3829: return 'Tech'
     if 4800<=s<=4899 or 2710<=s<=2741 or 7810<=s<=7841: return 'Comm'
     if 2000<=s<=2199 or 5400<=s<=5499 or 2840<=s<=2844 or s in (5141,5912): return 'Staples'
@@ -67,6 +68,7 @@ def screen(D,d,universe,mcap_min=5e8):
     g3=((s.ni/s.ni3)**(1/3)-1).where((s.ni3>0)&(s.ni>0)); s['g']=g3.fillna(s.g_ni)
     s['peg']=(s.pe/(100*s.g)).where(s.g>0)
     s['de']=(s.ltd.fillna(0)/s.equity).where(s.equity>0); s['cr']=s.ca/s.cl
+    h=D.A.loc[:d]; s['mom12']=(h.iloc[-1]/h.iloc[-253]-1).reindex(s.index) if len(h)>253 else np.nan
     _SC[k]=s; return s.copy()
 DEFAULT=dict(universe='SP500_PIT',N=20,stop=None,cap=0.05,cost=0.001,mcap_min=5e8,pfcf1=10,pfcf2=15,pe=15,pb=1.5,roe=.15,grev=.05,gni=.15,
              require_rising=True,de_max=1.0,filt=None,freq=3,score_min=None)

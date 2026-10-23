@@ -6,3 +6,4 @@ __pycache__/
 data/*.pkl
 data/membership/cik-lookup-data.txt
 data/membership/sp500_hist.csv
+data/macro/*.json
